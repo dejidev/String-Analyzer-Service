@@ -1,0 +1,38 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+
+# Local database file
+db.json
+
+# OS-specific junk
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+logs/*
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+
+# Build outputs (if you ever add TypeScript or build steps)
+dist/
+build/
+
+# Coverage/testing
+coverage/
+*.lcov
