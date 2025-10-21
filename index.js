@@ -5,7 +5,6 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
-const DB_PATH = path.resolve(__dirname, "db.json");
 const PORT = process.env.PORT || 3000;
 
 const app = express();
