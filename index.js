@@ -107,7 +107,11 @@ function validateStringValue(req, res, next) {
 app.post("/strings", requireJsonContent, validateStringValue, (req, res) => {
     try {
         const { value } = req.body;
-
+        
+        // 🔒 Reject empty or whitespace-only strings
+        if (typeof value !== "string" || !value.trim()) {
+            return res.status(400).json({ message: "String value cannot be empty" });
+        }
         // defensive: ensure DB loads and has expected shape
         let db = loadDB();
         if (!db || typeof db !== "object") {
