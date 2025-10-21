@@ -13,32 +13,33 @@ const app = express();
 app.use(bodyParser.json());
 
 
-// Simple file-backed DB helpers 
-function loadDB() {
+const DB_PATH = path.resolve(__dirname, "db.json");
+
+// helper to detect read-only environment
+function isReadOnlyFS() {
     try {
-        if (!fs.existsSync(DB_PATH)) {
-            fs.writeFileSync(DB_PATH, JSON.stringify({ strings: {} }, null, 2));
-        }
-        const raw = fs.readFileSync(DB_PATH, "utf8");
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== "object") return { strings: {} };
-        if (!parsed.strings || typeof parsed.strings !== "object") parsed.strings = {};
-        return parsed;
-    } catch (e) {
-        console.error("Failed to load DB:", e);
-        // attempt to repair db file
-        try {
-            fs.writeFileSync(DB_PATH, JSON.stringify({ strings: {} }, null, 2));
-        } catch (w) {
-            console.error("Failed to repair DB file:", w);
-        }
-        return { strings: {} };
+        fs.accessSync(__dirname, fs.constants.W_OK);
+        return false;
+    } catch {
+        return true;
     }
 }
 
+function loadDB() {
+    if (isReadOnlyFS()) return global.__MEM_DB__ || { strings: {} };
+    if (!fs.existsSync(DB_PATH))
+        fs.writeFileSync(DB_PATH, JSON.stringify({ strings: {} }, null, 2));
+    return JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
+}
+
 function saveDB(db) {
+    if (isReadOnlyFS()) {
+        global.__MEM_DB__ = db; // keep in memory only
+        return;
+    }
     fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
 }
+
 
 
 // --- Utility functions ----------------------------
@@ -81,23 +82,21 @@ function analyzeString(value) {
     };
 }
 
-// --- Missing middleware: add them here ----------------
 
 // Middleware to ensure requests have JSON Content-Type
 function requireJsonContent(req, res, next) {
     if (!req.is("application/json")) {
-        return res.status(400).json({ message: "Content-Type must be application/json" });
+        return res.status(415).json({ message: "Content-Type must be application/json" });
     }
     next();
 }
 
-// Middleware to validate body.value exists and is a string
 function validateStringValue(req, res, next) {
-    if (!Object.prototype.hasOwnProperty.call(req.body, "value")) {
-        return res.status(400).json({ message: 'Missing "value" field' });
+    if (!req.body || typeof req.body.value === "undefined") {
+        return res.status(400).json({ message: "Missing 'value' field" });
     }
     if (typeof req.body.value !== "string") {
-        return res.status(422).json({ message: '"value" must be a string' });
+        return res.status(422).json({ message: "'value' must be a string" });
     }
     next();
 }
@@ -106,7 +105,6 @@ function validateStringValue(req, res, next) {
 // --- Endpoints ------------------------------------
 
 // 1. Create/Analyze String
-// 1. Create/Analyze String (robust, with try/catch and explicit 201/409)
 app.post("/strings", requireJsonContent, validateStringValue, (req, res) => {
     try {
         const { value } = req.body;
